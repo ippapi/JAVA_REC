@@ -4,6 +4,7 @@ import torch
 import argparse
 import numpy as np
 from tqdm import tqdm
+import pandas as pd
 
 from SASRec import SASREC
 from data_utils import *
@@ -28,11 +29,12 @@ def main():
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--inference_only', default=False, type=str2bool)
     parser.add_argument('--state_dict_path', default=None, type=str)
+    parser.add_argument('--recommendation_save_path', default="/content/drive/MyDrive/JAVA_REC/recommendation", type=str)
     args = parser.parse_args()
 
     train_dir = "/content/drive/MyDrive/JAVA_REC/train_dir"
     dataset = data_retrieval()
-    [train, _, _, num_users, num_products] = dataset
+    [train, validation, test, num_users, num_products] = dataset
     num_batch = (len(train) - 1) // args.batch_size + 1
 
     f = open("/content/drive/MyDrive/JAVA_REC/log.txt", 'w')
@@ -101,13 +103,12 @@ def main():
             t1 = time.time() - t0
             total_time += t1
             print('Evaluating')
-            for k in [10]:
+            for k in [5]:
                 test_result = evaluate(model, dataset, sequence_size = 10, k = k)
                 val_result = evaluate_validation(model, dataset, sequence_size = 10, k = k)
                 print('epoch:%d, time: %f(s), valid (NDCG@%d: %.4f, Hit@%d: %.4f, Recall@%d: %.4f), test (NDCG@%d: %.4f, Hit@%d: %.4f, Recall@%d: %.4f)' %
                     (epoch, total_time, k, val_result["NDCG@k"], k, val_result["Hit@k"], k, val_result["Recall@k"],
                     k, test_result["NDCG@k"], k, test_result["Hit@k"], k, test_result["Recall@k"]))
-
 
             if val_result["NDCG@k"] > best_val_ndcg or val_result["Hit@k"] > best_val_hr or val_result["Recall@k"] > best_val_recall or test_result["NDCG@k"] > best_test_ndcg or test_result["Hit@k"] > best_test_hr or test_result["Recall@k"] > best_test_recall:
                 best_val_ndcg = max(val_result["NDCG@k"], best_val_ndcg)
@@ -127,7 +128,47 @@ def main():
             model.train()
 
     f.close()
-    print("Done")
+    print("I am done training")
+    
+    model.eval()
+    recommendation = defaultdict(list)
+
+    with tqdm(total=num_batch, desc=f"Predict recommended product", unit="batch") as pbar:
+        for step in range(num_batch):
+            user, seq_product, pos_product, neg_product = sampler.next_batch()
+            user, seq_product, pos_product, neg_product = np.array(user), np.array(seq_product), np.array(pos_product), np.array(neg_product)
+            predict_products = []
+
+            for index, u in enumerate(user):
+                interacted = set(train[u] + validation[u] + test[u])
+                predict = list(set(range(num_products)) - interacted)
+                predict_products.append(predict)
+
+                predictions = -model.predict(
+                    u,
+                    seq_product[index],
+                    predict_products
+                )[0]
+
+                predictions = predictions.squeeze()
+
+                if predictions.ndim == 1:
+                    top5_idx = predictions.argsort()[:5]
+                    top5_products = [predict_products[i] - 1 for i in top5_idx]
+                    recommendation.extend(top5_products)
+                else:
+                    raise ValueError(f"Expected 1D predictions, got shape: {predictions.shape}")
+            
+                print(f"Top-5 predicted products: {top5_products}")
+
+            pbar.set_postfix({"loss": f"{loss.item():.4f}"})
+            pbar.update(1)
+
+    df = pd.DataFrame([
+        {'user_id': user_id, 'recommended_courses': courses}
+        for user_id, courses in recommendation.items()
+    ])
+    df.to_csv('recommendation.csv', index=False)
 
 if __name__ == '__main__':
     main()

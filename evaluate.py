@@ -4,7 +4,7 @@ import numpy as np
 import random
 
 def evaluate(model, dataset, sequence_size = 10, k = 1):
-    [train, validation, test, num_users, num_courses] = copy.deepcopy(dataset)
+    [train, validation, test, num_users, num_products] = copy.deepcopy(dataset)
 
     NDCG = 0.0
     HIT = 0.0
@@ -17,26 +17,26 @@ def evaluate(model, dataset, sequence_size = 10, k = 1):
         if len(train[user]) < 1 or len(test[user]) < 1:
             continue
 
-        seq_course = np.zeros([sequence_size], dtype=np.int32)
+        seq_product = np.zeros([sequence_size], dtype=np.int32)
         next_index = sequence_size - 1
-        seq_course[next_index] = validation[user][0] if len(validation[user]) > 0 else 0
+        seq_product[next_index] = validation[user][0] if len(validation[user]) > 0 else 0
         next_index -= 1
         for i in reversed(train[user]):
-            seq_course[next_index] = i
+            seq_product[next_index] = i
             next_index -= 1
             if next_index == -1:
                 break
 
-        interacted_courses = set(train[user])
-        interacted_courses.add(0)
-        predict_courses = [test[user][0]]
+        interacted_products = set(train[user])
+        interacted_products.add(0)
+        predict_products = [test[user][0]]
 
-        all_courses = set(range(1, num_courses + 1))
-        available_courses = list(all_courses - interacted_courses - set(predict_courses))
-        num_needed = 100 - len(predict_courses)
-        predict_courses += random.sample(available_courses, min(num_needed, len(available_courses)))
+        all_products = set(range(1, num_products + 1))
+        available_products = list(all_products - interacted_products - set(predict_products))
+        num_needed = 100 - len(predict_products)
+        predict_products += random.sample(available_products, min(num_needed, len(available_products)))
 
-        predictions = -model.predict(*[np.array(l) for l in [[user], [seq_course], predict_courses]])
+        predictions = -model.predict(*[np.array(l) for l in [[user], [seq_product], predict_products]])
         predictions = predictions[0]
 
         rank = predictions.argsort().argsort()[0].item()
@@ -65,7 +65,7 @@ def evaluate(model, dataset, sequence_size = 10, k = 1):
         }
 
 def evaluate_validation(model, dataset, sequence_size = 10, k = 1):
-    [train, validation, test, num_users, num_courses] = copy.deepcopy(dataset)
+    [train, validation, test, num_users, num_products] = copy.deepcopy(dataset)
 
     NDCG = 0.0
     HIT = 0.0
@@ -78,24 +78,24 @@ def evaluate_validation(model, dataset, sequence_size = 10, k = 1):
         if len(train[user]) < 1 or len(test[user]) < 1:
             continue
 
-        seq_course = np.zeros([sequence_size], dtype=np.int32)
+        seq_product = np.zeros([sequence_size], dtype=np.int32)
         next_index = sequence_size - 1
         for i in reversed(train[user]):
-            seq_course[next_index] = i
+            seq_product[next_index] = i
             next_index -= 1
             if next_index == -1:
                 break
 
-        interacted_courses = set(train[user])
-        interacted_courses.add(0)
-        predict_courses = [validation[user][0]]
+        interacted_products = set(train[user])
+        interacted_products.add(0)
+        predict_products = [validation[user][0]]
 
-        all_courses = set(range(1, num_courses + 1))
-        available_courses = list(all_courses - interacted_courses - set(predict_courses))
-        num_needed = 100 - len(predict_courses)
-        predict_courses += random.sample(available_courses, min(num_needed, len(available_courses)))
+        all_products = set(range(1, num_products + 1))
+        available_products = list(all_products - interacted_products - set(predict_products))
+        num_needed = 100 - len(predict_products)
+        predict_products += random.sample(available_products, min(num_needed, len(available_products)))
 
-        predictions = -model.predict(*[np.array(l) for l in [[user], [seq_course], predict_courses]])
+        predictions = -model.predict(*[np.array(l) for l in [[user], [seq_product], predict_products]])
         predictions = predictions[0]
 
         rank = predictions.argsort().argsort()[0].item()

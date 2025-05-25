@@ -29,7 +29,7 @@ def main():
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--inference_only', default=False, type=str2bool)
     parser.add_argument('--state_dict_path', default=None, type=str)
-    parser.add_argument('--recommendation_save_path', default="/content/drive/MyDrive/JAVA_REC/recommendation", type=str)
+    parser.add_argument('--recommendation_save_path', default="/content/drive/MyDrive/JAVA_REC/recommendation/recommendation.csv", type=str)
     args = parser.parse_args()
 
     train_dir = "/content/drive/MyDrive/JAVA_REC/train_dir"
@@ -168,7 +168,7 @@ def main():
         {'user_id': user_id, 'recommended_courses': courses}
         for user_id, courses in recommendation.items()
     ])
-    df.to_csv('recommendation.csv', index=False)
+    df.to_csv(args.recommendation_save_path, index=False)
 
 if __name__ == '__main__':
     main()

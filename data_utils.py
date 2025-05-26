@@ -3,7 +3,7 @@ import pandas as pd
 import ast
 from collections import defaultdict
 
-def data_retrieval():
+def data_retrieval(path):
     num_users = 0
     num_products = 0
     train = defaultdict(list)
@@ -14,15 +14,13 @@ def data_retrieval():
         nonlocal num_users, num_products
         df = pd.read_csv(path)
         for _, row in df.iterrows():
-            user = int(row['user'])
-            products = ast.literal_eval(row['feature'])
-            products = [x + 1 for x in products]
-            storage[user].extend(products)
+            user = int(row['user_id'])
+            product = int(row['product_id'])
+            storage[user].append(product)
             num_users = max(num_users, user)
-            if products:
-                num_products = max(num_products, max(products))
+            num_products = max(num_products, product)
 
-    load_train('/content/drive/MyDrive/JAVA_REC/dataset/generated_data.csv', train)
+    load_train(path, train)
 
     for key in list(train.keys()):
         value = train[key]
@@ -35,16 +33,16 @@ def data_retrieval():
         else:
             del train[key]
 
-    return [train, validation, test, num_users + 1, num_products]
+    return [train, validation, test, num_users, num_products]
 
 class Sampler:
-    def __init__(self, users_interacts, num_users=99970, num_products=2828, batch_size=64, sequence_size=10):
+    def __init__(self, users_interacts, num_users=1000, num_products=50, batch_size=64, sequence_size=10):
         self.users_interacts = users_interacts
         self.num_users = num_users
         self.num_products = num_products
         self.batch_size = batch_size
         self.sequence_size = sequence_size
-        self.user_ids = np.arange(0, self.num_users, dtype=np.int32)
+        self.user_ids = np.arange(1, self.num_users + 1, dtype=np.int32)
         np.random.seed(1601)
         np.random.shuffle(self.user_ids)
         self.index = 0

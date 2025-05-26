@@ -104,8 +104,8 @@ def main():
             total_time += t1
             print('Evaluating')
             for k in [5]:
-                test_result = evaluate(model, dataset, sequence_size = 10, k = k)
-                val_result = evaluate_validation(model, dataset, sequence_size = 10, k = k)
+                test_result = evaluate(model, dataset, sequence_size = args.sequence_size, k = k)
+                val_result = evaluate_validation(model, dataset, args.sequence_size, k = k)
                 print('epoch:%d, time: %f(s), valid (NDCG@%d: %.4f, Hit@%d: %.4f, Recall@%d: %.4f), test (NDCG@%d: %.4f, Hit@%d: %.4f, Recall@%d: %.4f)' %
                     (epoch, total_time, k, val_result["NDCG@k"], k, val_result["Hit@k"], k, val_result["Recall@k"],
                     k, test_result["NDCG@k"], k, test_result["Hit@k"], k, test_result["Recall@k"]))
@@ -137,36 +137,32 @@ def main():
         for step in range(num_batch):
             user, seq_product, pos_product, neg_product = sampler.next_batch()
             user, seq_product, pos_product, neg_product = np.array(user), np.array(seq_product), np.array(pos_product), np.array(neg_product)
-            predict_products = []
-
+    
             for index, u in enumerate(user):
                 interacted = set(train[u] + validation[u] + test[u])
                 predict = list(set(range(num_products)) - interacted)
-                predict_products.append(predict)
 
                 predictions = -model.predict(
                     u,
-                    seq_product[index],
-                    predict_products
+                    np.array([seq_product[index]]),
+                    np.array([predict])
                 )[0]
 
                 predictions = predictions.squeeze()
 
                 if predictions.ndim == 1:
-                    top5_idx = predictions.argsort()[:5]
-                    top5_products = [predict_products[i] - 1 for i in top5_idx]
-                    recommendation.extend(top5_products)
+                    top5_idx = predictions.argsort()[:10]
+                    top5_products = [predict[i] for i in top5_idx]
+                    recommendation[u].extend(top5_products)
                 else:
                     raise ValueError(f"Expected 1D predictions, got shape: {predictions.shape}")
-            
-                print(f"Top-5 predicted products: {top5_products}")
 
             pbar.set_postfix({"loss": f"{loss.item():.4f}"})
             pbar.update(1)
 
     df = pd.DataFrame([
-        {'user_id': user_id, 'recommended_courses': courses}
-        for user_id, courses in recommendation.items()
+        {'user_id': user_id, 'recommended_products': products}
+        for user_id, products in recommendation.items()
     ])
     df.to_csv(args.recommendation_save_path, index=False)
 

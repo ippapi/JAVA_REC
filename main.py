@@ -29,11 +29,12 @@ def main():
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--inference_only', default=False, type=str2bool)
     parser.add_argument('--state_dict_path', default=None, type=str)
+    parser.add_argument('--data_path', default="/content/drive/MyDrive/JAVA_REC/dataset/interactions.csv", type=str)
     parser.add_argument('--recommendation_save_path', default="/content/drive/MyDrive/JAVA_REC/recommendation/recommendation.csv", type=str)
     args = parser.parse_args()
 
     train_dir = "/content/drive/MyDrive/JAVA_REC/train_dir"
-    dataset = data_retrieval()
+    dataset = data_retrieval(args.data_path)
     [train, validation, test, num_users, num_products] = dataset
     num_batch = (len(train) - 1) // args.batch_size + 1
 
@@ -151,9 +152,9 @@ def main():
                 predictions = predictions.squeeze()
 
                 if predictions.ndim == 1:
-                    top5_idx = predictions.argsort()[:10]
+                    top5_idx = predictions.argsort()[:5]
                     top5_products = [predict[i] for i in top5_idx]
-                    recommendation[u].extend(top5_products)
+                    recommendation[u] = top5_products
                 else:
                     raise ValueError(f"Expected 1D predictions, got shape: {predictions.shape}")
 
